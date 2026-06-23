@@ -168,7 +168,7 @@ async def back_to_main(call: CallbackQuery, state: FSMContext):
         await call.message.answer_photo(photo=photo, caption=text, reply_markup=main_menu_kb())
     except Exception as e:
         logging.error(f"Ошибка отправки фото при возврате: {e}")
-        await message.answer(text, reply_markup=main_menu_kb())
+        await call.message.answer(text, reply_markup=main_menu_kb())
 
 # --- КНОПКА 3: КОНТАКТЫ ---
 @router.callback_query(F.data == "menu_contacts")
@@ -284,8 +284,21 @@ async def process_contact(message: Message, state: FSMContext):
 
 @router.callback_query(BookingState.confirming, F.data.in_(["confirm_yes", "confirm_no"]))
 async def confirm_booking(call: CallbackQuery, state: FSMContext):
+    # Общий текст для главного меню
+    menu_text = (
+        "👋Здравствуйте, это бот для записи на маникюр салона Mirayy, "
+        "по адресу <code>Дом пушкина 123</code>.\n\n"
+        "Выберите нужное вам действие:"
+    )
+    photo = URLInputFile(MAIN_MENU_PHOTO)
+
     if call.data == "confirm_no":
-        await call.message.edit_text("Запись отклонена❌", reply_markup=main_menu_kb())
+        try:
+            await call.message.delete()
+        except:
+            pass
+        await call.answer("Запись отклонена ❌", show_alert=True)
+        await call.message.answer_photo(photo=photo, caption=menu_text, reply_markup=main_menu_kb())
         await state.clear()
         return
 
@@ -298,8 +311,18 @@ async def confirm_booking(call: CallbackQuery, state: FSMContext):
         await db.commit()
         booking_id = cursor.lastrowid
 
-    await call.message.edit_text(f"Запись создана✅\nВаш ID записи: Id{booking_id}", reply_markup=main_menu_kb())
+    try:
+        await call.message.delete()
+    except:
+        pass
+
+    # Выводим всплывающее окно (alert) внутри Телеграма с ID новой записи
+    await call.answer(f"Запись создана ✅\nВаш ID записи: Id{booking_id}", show_alert=True)
     
+    # Сразу отправляем главное меню с фотографией
+    await call.message.answer_photo(photo=photo, caption=menu_text, reply_markup=main_menu_kb())
+    
+    # --- УВЕДОМЛЕНИЕ АДМИНИСТРАЦИИ ---
     admin_text = (
         f"🔔 <b>Новая запись в салон!</b>\n\n"
         f"Запись Id{booking_id}\n"
