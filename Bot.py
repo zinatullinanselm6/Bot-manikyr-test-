@@ -8,16 +8,19 @@ import os
 from aiohttp import web
 
 from aiogram import Bot, Dispatcher, F, Router
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, URLInputFile
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "8871725908:AAF6Bq-mGh5Ik1AtjNQ1qn_1f0Uz74kI8uI"
+BOT_TOKEN = "8871725908:AAF6Bq-mGh5Ik1AtjNQ1qn_1f0Uz74kI8uI" # Токен вернул прямо в код
 TZ_MOSCOW = pytz.timezone('Europe/Moscow')
 ADMINS = set() # Здесь будут временно храниться ID админов
+
+# Укажи здесь ссылку на твою главную картинку (баннер салона)
+MAIN_MENU_PHOTO = "https://i.postimg.cc/rsh5828D/IMG-20260623-193407.png"
 
 from aiogram.client.default import DefaultBotProperties
 
@@ -130,7 +133,7 @@ def confirm_kb():
         [InlineKeyboardButton(text="Отклонить ❌", callback_data="confirm_no")]
     ])
 
-# --- ОСНОВНОЕ МЕНЮ ---
+# --- ОСНОВНОЕ МЕНЮ С ФОТО ---
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
@@ -139,17 +142,33 @@ async def cmd_start(message: Message, state: FSMContext):
         "по адресу <code>Дом пушкина 123</code>.\n\n"
         "Выберите нужное вам действие:"
     )
-    await message.answer(text, reply_markup=main_menu_kb())
+    try:
+        photo = URLInputFile(MAIN_MENU_PHOTO)
+        await message.answer_photo(photo=photo, caption=text, reply_markup=main_menu_kb())
+    except Exception as e:
+        logging.error(f"Ошибка отправки фото в старте: {e}")
+        await message.answer(text, reply_markup=main_menu_kb())
 
 @router.callback_query(F.data == "back_to_main")
 async def back_to_main(call: CallbackQuery, state: FSMContext):
     await state.clear()
+    
+    try:
+        await call.message.delete()
+    except:
+        pass
+        
     text = (
         "👋Здравствуйте, это бот для записи на маникюр салона Mirayy, "
         "по адресу <code>Дом пушкина 123</code>.\n\n"
         "Выберите нужное вам действие:"
     )
-    await call.message.edit_text(text, reply_markup=main_menu_kb())
+    try:
+        photo = URLInputFile(MAIN_MENU_PHOTO)
+        await call.message.answer_photo(photo=photo, caption=text, reply_markup=main_menu_kb())
+    except Exception as e:
+        logging.error(f"Ошибка отправки фото при возврате: {e}")
+        await message.answer(text, reply_markup=main_menu_kb())
 
 # --- КНОПКА 3: КОНТАКТЫ ---
 @router.callback_query(F.data == "menu_contacts")
@@ -163,7 +182,12 @@ async def show_contacts(call: CallbackQuery):
         "Поддержка бота: @mirayy_code"
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]])
-    await call.message.edit_text(text, reply_markup=kb)
+    
+    try:
+        await call.message.delete()
+        await call.message.answer(text, reply_markup=kb)
+    except:
+        await call.message.edit_text(text, reply_markup=kb)
 
 # --- КНОПКА 4: ПОРТФОЛИО ---
 @router.callback_query(F.data == "menu_portfolio")
@@ -175,13 +199,22 @@ async def show_portfolio(call: CallbackQuery):
         "TELEGRAM: ссылка_на_tg"
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]])
-    await call.message.edit_text(text, reply_markup=kb)
+    
+    try:
+        await call.message.delete()
+        await call.message.answer(text, reply_markup=kb)
+    except:
+        await call.message.edit_text(text, reply_markup=kb)
 
 # --- КНОПКА 1: ПРОЦЕСС ЗАПИСИ ---
 @router.callback_query(F.data == "menu_book")
 async def start_booking(call: CallbackQuery, state: FSMContext):
     await state.set_state(BookingState.choosing_master)
-    await call.message.edit_text("👩‍🎤Выберите мастера:", reply_markup=masters_kb("book"))
+    try:
+        await call.message.delete()
+        await call.message.answer("👩‍🎤Выберите мастера:", reply_markup=masters_kb("book"))
+    except:
+        await call.message.edit_text("👩‍🎤Выберите мастера:", reply_markup=masters_kb("book"))
 
 @router.callback_query(BookingState.choosing_master, F.data.startswith("book_master_"))
 async def book_master_chosen(call: CallbackQuery, state: FSMContext):
@@ -221,7 +254,6 @@ async def book_time_chosen(call: CallbackQuery, state: FSMContext):
     await state.update_data(time=time)
     await state.set_state(BookingState.entering_contact)
     
-    # Сохраняем ID сообщения бота, чтобы потом его изменить
     await state.update_data(msg_id=call.message.message_id)
     
     await call.message.edit_text(
@@ -237,7 +269,6 @@ async def process_contact(message: Message, state: FSMContext):
     data = await state.get_data()
     await state.update_data(contact_info=contact_info)
     
-    # Удаляем сообщение пользователя
     await message.delete()
     
     text = (
@@ -249,7 +280,6 @@ async def process_contact(message: Message, state: FSMContext):
     )
     
     await state.set_state(BookingState.confirming)
-    # Изменяем прошлое сообщение бота
     await bot.edit_message_text(chat_id=message.chat.id, message_id=data['msg_id'], text=text, reply_markup=confirm_kb())
 
 @router.callback_query(BookingState.confirming, F.data.in_(["confirm_yes", "confirm_no"]))
@@ -270,7 +300,6 @@ async def confirm_booking(call: CallbackQuery, state: FSMContext):
 
     await call.message.edit_text(f"Запись создана✅\nВаш ID записи: Id{booking_id}", reply_markup=main_menu_kb())
     
-    # --- УВЕДОМЛЕНИЕ АДМИНИСТРАЦИИ ---
     admin_text = (
         f"🔔 <b>Новая запись в салон!</b>\n\n"
         f"Запись Id{booking_id}\n"
@@ -283,7 +312,7 @@ async def confirm_booking(call: CallbackQuery, state: FSMContext):
         try:
             await bot.send_message(chat_id=admin_id, text=admin_text)
         except Exception:
-            pass # Если админ заблокировал бота, пропускаем
+            pass
             
     await state.clear()
 
@@ -295,7 +324,11 @@ async def my_bookings(call: CallbackQuery):
             bookings = await cursor.fetchall()
             
     if not bookings:
-        await call.message.edit_text("У вас нет активных записей.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]]))
+        try:
+            await call.message.delete()
+            await call.message.answer("У вас нет активных записей.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]]))
+        except:
+            await call.message.edit_text("У вас нет активных записей.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]]))
         return
 
     text = "📝 <b>Ваши записи:</b>\n\n"
@@ -311,7 +344,11 @@ async def my_bookings(call: CallbackQuery):
         )
     
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ В главное меню", callback_data="back_to_main")]])
-    await call.message.edit_text(text, reply_markup=kb)
+    try:
+        await call.message.delete()
+        await call.message.answer(text, reply_markup=kb)
+    except:
+        await call.message.edit_text(text, reply_markup=kb)
 
 # --- УДАЛЕНИЕ ЗАПИСЕЙ ---
 @router.message(F.text.startswith("/Delete_Id"))
@@ -322,7 +359,6 @@ async def delete_booking(message: Message):
         return
     
     async with aiosqlite.connect('salon.db') as db:
-        # Проверяем, чья это запись
         async with db.execute("SELECT user_id FROM bookings WHERE id=?", (b_id,)) as cursor:
             row = await cursor.fetchone()
             
@@ -342,7 +378,7 @@ async def delete_booking(message: Message):
                 try:
                     await bot.send_message(owner_id, f"Ваша запись ID{b_id} была удалена администратором бота❗")
                 except:
-                    pass # Пользователь мог заблокировать бота
+                    pass
             else:
                 await message.answer(f"Запись ID{b_id} удалена🗑.")
         else:
@@ -360,7 +396,11 @@ async def admin_view_masters(call: CallbackQuery, state: FSMContext):
     if call.from_user.id not in ADMINS:
         return
     await state.set_state(AdminState.choosing_master)
-    await call.message.edit_text("👩‍🎤Выберите мастера для просмотра записей:", reply_markup=masters_kb("admin"))
+    try:
+        await call.message.delete()
+        await call.message.answer("👩‍🎤Выберите мастера для просмотра записей:", reply_markup=masters_kb("admin"))
+    except:
+        await call.message.edit_text("👩‍🎤Выберите мастера для просмотра записей:", reply_markup=masters_kb("admin"))
 
 @router.callback_query(AdminState.choosing_master, F.data.startswith("admin_master_"))
 async def admin_master_chosen(call: CallbackQuery, state: FSMContext):
@@ -407,7 +447,6 @@ async def check_reminders():
             
         for b in bookings:
             b_id, user_id, date_str, time_str, r24, r6, r2 = b
-            # Собираем дату и время записи в один объект
             try:
                 dt_str = f"{date_str} {time_str}"
                 appt_time = TZ_MOSCOW.localize(datetime.strptime(dt_str, "%Y-%m-%d %H:%M"))
@@ -432,7 +471,7 @@ async def send_reminder(user_id, hours):
     try:
         await bot.send_message(user_id, f"🔔Напоминание, до вашей записи осталось {hours} часа. Подробнее в разделе Мои записи.")
     except:
-        pass # Пользователь заблокировал бота
+        pass
 
 # --- ВЕБ-СЕРВЕР ДЛЯ UPTIMEROBOT & RENDER ---
 async def web_handler(request):
@@ -451,15 +490,12 @@ async def start_web_server():
 async def main():
     await init_db()
     
-    # Запуск планировщика для напоминаний (каждые 10 минут)
     scheduler = AsyncIOScheduler()
     scheduler.add_job(check_reminders, 'interval', minutes=10)
     scheduler.start()
     
-    # Запуск веб-сервера (чтобы Render не убивал бота)
     await start_web_server()
     
-    # Запуск самого бота
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
