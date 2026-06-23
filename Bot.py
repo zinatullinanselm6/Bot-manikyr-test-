@@ -392,7 +392,7 @@ async def book_time_chosen(call: CallbackQuery, state: FSMContext):
     
     await call.message.edit_text(
         f"✳️ Мастер: <b>{data['master']}</b>\n📅 День: <b>{data['date']}</b>\n🕘 Время: <b>{time}</b>\n\n"
-        f"📲 Пожалуйста, напишите своё имя и номер телефона (Например: Имя 81234567890)."
+        f"📲 Пожалуйста, напишите своё имя, номер телефона, комментарий админу (Например: Имя 81234567890, комментарий)."
     )
 
 @router.message(BookingState.entering_contact)
