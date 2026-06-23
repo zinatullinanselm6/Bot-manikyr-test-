@@ -15,7 +15,7 @@ from aiogram.fsm.state import State, StatesGroup
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "ТВОЙ_ТОКЕН_ОТ_BOTFATHER_СЮДА"
+BOT_TOKEN = "8871725908:AAF6Bq-mGh5Ik1AtjNQ1qn_1f0Uz74kI8uI"
 TZ_MOSCOW = pytz.timezone('Europe/Moscow')
 ADMINS = set() # Здесь будут временно храниться ID админов
 
