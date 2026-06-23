@@ -113,7 +113,7 @@ def get_date_buttons():
 def main_menu_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Записаться 🖊️", callback_data="menu_book")],
-        [InlineKeyboardButton(text="💵 Прайс-лист", callback_data="menu_price")],
+        [InlineKeyboardButton(text="Прайс-лист 💵", callback_data="menu_price")],
         [InlineKeyboardButton(text="Мои записи 🟢", callback_data="menu_my_bookings")],
         [InlineKeyboardButton(text="Контакты 👥", callback_data="menu_contacts")],
         [InlineKeyboardButton(text="Наше портфолио 💄", callback_data="menu_portfolio")]
