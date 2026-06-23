@@ -19,7 +19,9 @@ BOT_TOKEN = "8871725908:AAF6Bq-mGh5Ik1AtjNQ1qn_1f0Uz74kI8uI"
 TZ_MOSCOW = pytz.timezone('Europe/Moscow')
 ADMINS = set() # Здесь будут временно храниться ID админов
 
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+from aiogram.client.default import DefaultBotProperties
+
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
