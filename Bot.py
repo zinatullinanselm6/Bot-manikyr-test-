@@ -22,7 +22,7 @@ TZ_MOSCOW = pytz.timezone('Europe/Moscow')
 ADMINS = set()
 
 # Ссылка на баннер (Когда получишь file_id от бота, просто замени эту ссылку на него)
-MAIN_MENU_PHOTO = "https://i.postimg.cc/rsh5828D/IMG-20260623-193407.png"
+MAIN_MENU_PHOTO = "AgACAgEAAxkBAAPpajua5UxBQcNL-ffjBZDoZ62eLSEAAtULaxv1XeFFCkCoN_MXLRQBAAMCAAN5AAM8BA"
 
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
